@@ -1,0 +1,5 @@
+{
+  "name": "Copy of Tube-to-Textbook",
+  "description": "An application that takes a YouTube video transcript and uses the Gemini API to generate a structured textbook chapter and an interactive quiz, transforming passive video content into an active learning experience.",
+  "requestFramePermissions": []
+}
