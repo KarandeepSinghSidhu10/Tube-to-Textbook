@@ -1,20 +1,52 @@
+# Tube-to-Textbook
+
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+<img width="1200" height="475" alt="Tube-to-Textbook Banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+## 📖 Overview
 
-This contains everything you need to run your app locally.
+**Tube-to-Textbook** is an application that transforms passive video content into an active learning experience. It takes a YouTube video transcript and uses the **Gemini API** to generate a structured textbook chapter and an interactive quiz.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1-lSLqqhfaH3XWQbau7Dbv5cXEYabbY5Q
+## ✨ Features
 
-## Run Locally
+* **AI-Powered Content Generation**: Converts raw video transcripts into readable, structured Markdown textbook chapters with titles, key terms, and summaries.
+* **Interactive Quizzes**: Generates a 3-question multiple-choice quiz to test comprehension immediately after reading.
+* **Instant Feedback**: The quiz interface provides visual feedback (green/red indicators) for correct and incorrect answers.
+* **Integrated Video Player**: Watch the source YouTube video directly alongside the generated study material.
+* **Markdown Support**: Renders rich text formatting including code blocks, headers, and bold text.
 
-**Prerequisites:**  Node.js
+## 🛠️ Tech Stack
 
+* **Frontend**: React 19, Vite
+* **AI Integration**: Google GenAI SDK (`@google/genai`) using the `gemini-3-flash-preview` model
+* **Styling**: Tailwind CSS (via CDN with Typography and Forms plugins)
+* **Language**: TypeScript
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 🚀 Getting Started
+
+### Prerequisites
+
+* **Node.js** (Latest LTS recommended)
+* **Google Gemini API Key**: Obtain one from [Google AI Studio](https://aistudio.google.com/).
+
+### Installation
+
+1.  **Clone the repository** and navigate to the project folder.
+
+2.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
+
+3.  **Configure Environment Variables**:
+    Create a `.env.local` file in the root directory and add your API key:
+    ```env
+    GEMINI_API_KEY=your_actual_api_key_here
+    ```
+
+### Running the App
+
+Start the development server:
+```bash
+npm run dev
