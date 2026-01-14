@@ -1,18 +1,78 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { generateTextbookFromTranscript } from './services/geminiService';
-import type { GeneratedData } from './types';
+import type { GeneratedData, HistoryItem } from './types';
 import YouTubePlayer from './components/YouTubePlayer';
 import GeneratedContent from './components/GeneratedContent';
 import Quiz from './components/Quiz';
-import { YouTubeIcon, BookOpenIcon, SparklesIcon, AlertTriangleIcon } from './components/icons';
+import Flashcards from './components/Flashcards';
+import HistorySidebar from './components/HistorySidebar';
+import { YouTubeIcon, BookOpenIcon, SparklesIcon, AlertTriangleIcon, ClockIcon } from './components/icons';
 
 const App: React.FC = () => {
     const [youtubeUrl, setYoutubeUrl] = useState<string>('');
     const [transcript, setTranscript] = useState<string>('');
+    const [numQuestions, setNumQuestions] = useState<number>(5);
     const [generatedData, setGeneratedData] = useState<GeneratedData | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
+    
+    // History State
+    const [history, setHistory] = useState<HistoryItem[]>([]);
+    const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
+
+    // Load history on mount
+    useEffect(() => {
+        try {
+            const savedHistory = localStorage.getItem('tube_textbook_history');
+            if (savedHistory) {
+                setHistory(JSON.parse(savedHistory));
+            }
+        } catch (e) {
+            console.error("Failed to load history", e);
+        }
+    }, []);
+
+    const saveToHistory = (data: GeneratedData, url: string, trans: string, qs: number) => {
+        try {
+            // Extract a title from the markdown (first H1)
+            const titleMatch = data.textbookChapter.match(/^#\s+(.+)$/m);
+            const title = titleMatch ? titleMatch[1] : 'Untitled Chapter';
+
+            const newItem: HistoryItem = {
+                id: Date.now().toString(), // Simple ID
+                timestamp: Date.now(),
+                youtubeUrl: url,
+                transcript: trans,
+                numQuestions: qs,
+                generatedData: data,
+                title: title
+            };
+
+            const updatedHistory = [newItem, ...history].slice(0, 10); // Keep last 10
+            setHistory(updatedHistory);
+            localStorage.setItem('tube_textbook_history', JSON.stringify(updatedHistory));
+        } catch (e) {
+            console.error("Failed to save history (likely quota exceeded)", e);
+        }
+    };
+
+    const deleteFromHistory = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent triggering selection
+        const updatedHistory = history.filter(item => item.id !== id);
+        setHistory(updatedHistory);
+        localStorage.setItem('tube_textbook_history', JSON.stringify(updatedHistory));
+    };
+
+    const loadHistoryItem = (item: HistoryItem) => {
+        setYoutubeUrl(item.youtubeUrl);
+        setTranscript(item.transcript);
+        setNumQuestions(item.numQuestions);
+        setGeneratedData(item.generatedData);
+        setIsHistoryOpen(false);
+        setError(null);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     const videoId = useMemo(() => {
         if (!youtubeUrl) return null;
@@ -31,8 +91,9 @@ const App: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const result = await generateTextbookFromTranscript(transcript);
+            const result = await generateTextbookFromTranscript(transcript, numQuestions);
             setGeneratedData(result);
+            saveToHistory(result, youtubeUrl, transcript, numQuestions);
         } catch (err) {
             console.error(err);
             setError(err instanceof Error ? err.message : 'An unknown error occurred.');
@@ -48,26 +109,49 @@ const App: React.FC = () => {
         setGeneratedData(null);
         setError(null);
         setIsLoading(false);
+        setNumQuestions(5);
     };
+
+    const questionOptions = [5, 10, 15, 20, 25, 30];
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 font-sans text-slate-300">
-            <header className="bg-slate-900/70 backdrop-blur-sm p-4 border-b border-slate-700 sticky top-0 z-10">
+            <header className="bg-slate-900/70 backdrop-blur-sm p-4 border-b border-slate-700 sticky top-0 z-20">
                 <div className="container mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <BookOpenIcon className="w-8 h-8 text-cyan-400" />
-                        <h1 className="text-2xl font-bold text-white tracking-tight">Tube-to-Textbook</h1>
+                        <h1 className="text-2xl font-bold text-white tracking-tight hidden sm:block">Tube-to-Textbook</h1>
+                        <h1 className="text-xl font-bold text-white tracking-tight sm:hidden">T2T</h1>
                     </div>
-                    {generatedData && (
-                         <button
-                            onClick={handleReset}
-                            className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-4 rounded-md transition-all duration-300 transform hover:scale-105"
+                    
+                    <div className="flex items-center gap-3">
+                        {generatedData && (
+                             <button
+                                onClick={handleReset}
+                                className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 px-4 rounded-md transition-all duration-300 transform hover:scale-105 text-sm sm:text-base"
+                            >
+                                + New
+                            </button>
+                        )}
+                        <button
+                            onClick={() => setIsHistoryOpen(true)}
+                            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 px-4 rounded-md border border-slate-600 transition-all text-sm sm:text-base"
+                            title="View History"
                         >
-                            + Start New Chapter
+                            <ClockIcon className="w-5 h-5" />
+                            <span className="hidden sm:inline">History</span>
                         </button>
-                    )}
+                    </div>
                 </div>
             </header>
+
+            <HistorySidebar 
+                isOpen={isHistoryOpen} 
+                onClose={() => setIsHistoryOpen(false)} 
+                history={history}
+                onSelect={loadHistoryItem}
+                onDelete={deleteFromHistory}
+            />
 
             <main className="container mx-auto p-4 md:p-8">
                 {!generatedData ? (
@@ -98,13 +182,34 @@ const App: React.FC = () => {
                                             value={transcript}
                                             onChange={(e) => setTranscript(e.target.value)}
                                             placeholder="Paste the full video transcript here..."
-                                            rows={10}
+                                            rows={8}
                                             className="w-full bg-slate-900 border border-slate-600 rounded-md p-3 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
                                             required
                                         />
                                         <p className="text-xs text-slate-400 mt-2">
                                             How to get a transcript: On YouTube, click the '...' below the video, then 'Show transcript'. Copy and paste the text here.
                                         </p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block mb-3 text-lg font-semibold text-white">Number of Quiz Questions</label>
+                                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                                            {questionOptions.map((num) => (
+                                                <button
+                                                    key={num}
+                                                    type="button"
+                                                    onClick={() => setNumQuestions(num)}
+                                                    className={`
+                                                        py-2 px-1 rounded-md font-medium text-sm transition-all duration-200 border
+                                                        ${numQuestions === num 
+                                                            ? 'bg-cyan-600 border-cyan-500 text-white shadow-[0_0_15px_rgba(8,145,178,0.5)] transform scale-105' 
+                                                            : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white'}
+                                                    `}
+                                                >
+                                                    {num}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                     
                                     <button
@@ -162,6 +267,9 @@ const App: React.FC = () => {
                         {videoId && <YouTubePlayer videoId={videoId} />}
                         <div className="bg-slate-800 rounded-lg p-6 md:p-8 shadow-lg border border-slate-700 mt-8 space-y-8">
                            <GeneratedContent markdownContent={generatedData.textbookChapter} />
+                           {generatedData.flashcards && generatedData.flashcards.length > 0 && (
+                               <Flashcards flashcards={generatedData.flashcards} />
+                           )}
                            {generatedData.quiz && generatedData.quiz.length > 0 && <Quiz questions={generatedData.quiz} />}
                        </div>
                     </div>
